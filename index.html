@@ -267,6 +267,38 @@ tr:last-child td{border-bottom:0}
 .pf-id strong{font-family:var(--display);font-size:22px;overflow:hidden;text-overflow:ellipsis}
 .pf-id span{font-size:14px;overflow:hidden;text-overflow:ellipsis}
 .seg-ctl.three{grid-template-columns:repeat(3,1fr)}
+.seg-ctl.three button{padding:10px 4px;font-size:14px}
+.bancobox{display:flex;flex-direction:column;gap:20px}
+.saldo{background:var(--ot);color:#fff;border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:6px}
+.saldo>span{font-size:14px;font-weight:600;opacity:.85}
+.saldo>b{font-family:var(--display);font-weight:800;font-size:clamp(44px,14vw,60px);line-height:1;letter-spacing:-.02em}
+.saldo.neg{background:var(--danger)}
+.saldo-row{display:flex;gap:24px;margin-top:8px;flex-wrap:wrap}
+.saldo-row small{display:block;font-size:13px;opacity:.85}
+.saldo-row b{font-family:var(--display);font-size:20px}
+.extrato{display:flex;flex-direction:column}
+.ex{display:grid;grid-template-columns:52px 1fr auto;gap:2px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.ex:last-child{border-bottom:0}
+.ex .dt{font-size:13px;color:var(--muted);line-height:1.2}
+.ex .dt b{display:block;font-family:var(--display);font-size:18px;color:var(--ink)}
+.ex .ds{min-width:0}
+.ex .ds b{display:block;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ex .ds small{color:var(--muted);font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ex .vl{text-align:right;font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums}
+.ex .vl small{display:block;font-family:var(--body);font-weight:500;font-size:12px;color:var(--muted)}
+.ex .cr{color:var(--ot)}
+.ex .db{color:var(--danger)}
+.ex .del{grid-column:2/-1;justify-self:start;font-size:13px;padding:2px 0}
+.bank{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:18px;padding:14px 16px;box-shadow:var(--shadow)}
+.bank:focus-visible{outline:2px solid var(--primary)}
+.bank-ico{width:40px;height:40px;border-radius:12px;background:var(--raised);color:var(--ot);display:grid;place-items:center;flex:none}
+.bank-ico svg{width:22px;height:22px}
+.bank-txt{flex:1;min-width:0}
+.bank-txt small{display:block;color:var(--muted);font-size:13px}
+.bank-txt b{font-family:var(--display);font-weight:800;font-size:22px;color:var(--ot)}
+.bank-txt b.neg{color:var(--danger)}
+.bank-go{font-size:13px}
+.status.folga{background:var(--green-soft);color:var(--green)}
 .seg-ctl button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 .tabbar button{border:0;background:transparent;border-radius:14px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
 .tabbar button svg{width:24px;height:24px}
@@ -332,6 +364,8 @@ tr:last-child td{border-bottom:0}
     </button>
   </div>
   <div id="heroBox"></div>
+  <button class="bank" id="bankCard"><span class="bank-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l8-5 8 5M6 10v8M10 10v8M14 10v8M18 10v8M3 20h18"/></svg></span>
+    <span class="bank-txt"><small>Banco de horas</small><b class="num" id="bankSaldo">0h00</b></span><span class="muted bank-go">Ver extrato</span></button>
   <div class="sechead"><h2>Minhas viagens</h2>
     <button class="btn small" id="newTripBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nova viagem</button>
   </div>
@@ -370,9 +404,36 @@ tr:last-child td{border-bottom:0}
 <!-- ============ RELATÓRIOS ============ -->
 <div class="view" id="relView" hidden>
   <div class="title-row"><h1>Relatórios</h1></div>
-  <div class="seg-ctl" role="tablist" aria-label="Tipo de relatório">
+  <div class="seg-ctl three" role="tablist" aria-label="Tipo de relatório">
     <button type="button" role="tab" data-m="completo">Completo</button>
-    <button type="button" role="tab" data-m="extra">Só horas a mais</button>
+    <button type="button" role="tab" data-m="extra">Horas a mais</button>
+    <button type="button" role="tab" data-m="banco">Banco de horas</button>
+  </div>
+  <div id="bancoBox" class="bancobox" hidden>
+    <section class="saldo" id="saldoCard">
+      <span>Saldo do banco de horas</span>
+      <b class="num" id="bkSaldo">0h00</b>
+      <div class="saldo-row"><div><small>Horas a mais acumuladas</small><b class="num" id="bkCred">0h00</b></div><div><small>Folgas tiradas</small><b class="num" id="bkDeb">0h00</b></div></div>
+    </section>
+    <section class="card">
+      <div class="hc-row"><h3>Registrar folga</h3><button class="btn small" id="fgOpen" aria-expanded="false">Nova folga</button></div>
+      <form class="form" id="fgForm" hidden novalidate>
+        <div class="f"><label for="fgData">Dia da folga</label><input class="field" id="fgData" type="date"></div>
+        <div class="seg-ctl" role="group" aria-label="Duração da folga">
+          <button type="button" data-fg="dia">Dia inteiro</button><button type="button" data-fg="horas">Algumas horas</button>
+        </div>
+        <div class="f" id="fgHorasRow" hidden><label for="fgHoras">Quantas horas</label><input class="field" id="fgHoras" type="time" value="02:00"><small>Ex.: 02:00 para sair 2 horas mais cedo.</small></div>
+        <small class="muted" id="fgDiaInfo"></small>
+        <div class="f"><label for="fgObs">Observação</label><input class="field" id="fgObs" placeholder="Ex.: folga compensando a virada de Botuverá" autocomplete="off"></div>
+        <p class="err" id="fgErr" role="alert"></p>
+        <button class="btn block" type="submit">Registrar folga</button>
+      </form>
+    </section>
+    <section class="card">
+      <h3>Extrato</h3>
+      <span class="muted" style="font-size:13px">Todos os lançamentos desde o começo, do mais recente para o mais antigo.</span>
+      <div class="extrato" id="extrato"></div>
+    </section>
   </div>
   <div class="pills" id="periods" role="group" aria-label="Período">
     <button data-p="mes">Este mês</button><button data-p="mesant">Mês anterior</button><button data-p="semana">Esta semana</button><button data-p="viagem">Por viagem</button>
@@ -394,10 +455,10 @@ tr:last-child td{border-bottom:0}
     </div>
     <span class="muted" style="font-size:13px">O que for trabalhado fora desse horário conta como hora a mais.</span>
   </div>
-  <div class="card"><h3 id="chartTitle">Horas por dia</h3><div class="chart" id="chart"></div><div class="xlab" id="xlab"></div>
+  <div class="card" id="chartCard"><h3 id="chartTitle">Horas por dia</h3><div class="chart" id="chart"></div><div class="xlab" id="xlab"></div>
     <div class="legend" id="chartLegend"></div></div>
   <div class="card" id="byTripCard"><h3 id="byTripTitle">Por viagem</h3><div class="byTrip" id="byTrip"></div></div>
-  <div class="card"><h3 id="tblTitle">Batidas</h3><div class="tbl-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot></table></div></div>
+  <div class="card" id="tblCard"><h3 id="tblTitle">Batidas</h3><div class="tbl-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot></table></div></div>
   <div class="actions">
     <button class="btn" id="dlPdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Baixar PDF</button>
     <button class="btn ghost" id="copyRel">Copiar texto</button>
@@ -697,6 +758,7 @@ $("unForm").addEventListener("submit",async e=>{
     if(id.startsWith(old+"_")&&DATE_RE.test(id.slice(old.length+1)))to=nu+"_"+id.slice(old.length+1);
     else if(id.startsWith("viagem_"+old+"_")&&!id.slice(8+old.length).includes("_"))to="viagem_"+nu+"_"+id.slice(8+old.length);
     else if(id==="config_"+old)to="config_"+nu;
+    else if(id.startsWith("folga_"+old+"_")&&!id.slice(7+old.length).includes("_"))to="folga_"+nu+"_"+id.slice(7+old.length);
     if(to)moves.push([id,to]);
   }
   await put("conta_"+nu,{...acc(),user:nu,hash:await hash(nu,pass)});
@@ -717,7 +779,8 @@ $("pfLogout").onclick=()=>showLogin();
 $("expBtn").onclick=async()=>{
   const{hash:_h,...conta}=acc(),dias=myDays(),viagens={};
   trips().forEach(({id,...t})=>viagens[id.slice(tripPrefix().length)]=t);
-  const data={app:"ponto-viagem",formato:1,exportadoEm:new Date().toISOString(),usuario:me.user,conta,config:all["config_"+me.user]||null,dias,viagens};
+  const folgasExp={};folgas().forEach(({id,...f})=>folgasExp[id.slice(folgaPrefix().length)]=f);
+  const data={app:"ponto-viagem",formato:1,exportadoEm:new Date().toISOString(),usuario:me.user,conta,config:all["config_"+me.user]||null,dias,viagens,folgas:folgasExp};
   if(!dl)return toast("Download indisponível aqui.");
   try{await dl.save({filename:`ponto-viagem-backup-${todayKey()}.json`,data:new Blob([JSON.stringify(data,null,1)],{type:"application/json"})});
       toast(`Backup gerado: ${Object.keys(dias).length} dias e ${Object.keys(viagens).length} viagens`)}
@@ -730,6 +793,7 @@ $("impFile").addEventListener("change",async e=>{
     let nd=0,nv=0;
     for(const[k,r]of Object.entries(d.dias||{}))if(DATE_RE.test(k)&&!all[dkey(k)]){await put(dkey(k),r);nd++}
     for(const[id,t]of Object.entries(d.viagens||{}))if(!all[tripPrefix()+id]){await put(tripPrefix()+id,t);nv++}
+    for(const[id,f]of Object.entries(d.folgas||{}))if(!all[folgaPrefix()+id])await put(folgaPrefix()+id,f);
     if(d.config&&!all["config_"+me.user])await put("config_"+me.user,d.config);
     render();toast(`Importado: ${nd} dias e ${nv} viagens novas. O que já existia foi mantido.`);
   }catch(err){toast("Esse arquivo não é um backup do Ponto de Viagem.")}
@@ -738,6 +802,7 @@ $("impFile").addEventListener("change",async e=>{
 /* ---------- início ---------- */
 function renderHome(){
   const h=new Date().getHours();$("greet").textContent=h<12?"Bom dia":h<18?"Boa tarde":"Boa noite";
+  {const sb=bancoData().saldo,el=$("bankSaldo");el.textContent=fmtS(sb);el.classList.toggle("neg",sb<0)}
   const tk=todayKey(),act=tripFor(tk),box=$("heroBox");
   if(act){
     const s=sumDays(tripDays(act)),dayN=Math.round((parseKey(tk)-parseKey(act.inicio))/864e5)+1;
@@ -859,7 +924,9 @@ function renderPonto(){
   if(t)chip.querySelector("b").textContent=t.destino+(t.cliente?" — "+t.cliente:"");
   chip.onclick=()=>{if(t){openTrip=t.id;go("trip",true)}else openTripForm(null)};
   const next=SLOTS.findIndex(([k])=>!r[k]),st=$("status");st.className="status";
-  if(next===-1){st.textContent="Dia completo";st.classList.add("done")}
+  const fg=folgaOn(sel);
+  if(fg.length&&next===0){st.textContent="Folga · "+fmt(fg.reduce((a,f)=>a+f.minutos,0));st.classList.add("folga")}
+  else if(next===-1){st.textContent="Dia completo";st.classList.add("done")}
   else if(!isToday)st.textContent=next===0?"Sem registro":"Incompleto";
   else if(next===0)st.textContent="Não iniciado";
   else if(next===2){st.textContent="No almoço";st.classList.add("lunch")}
@@ -967,7 +1034,7 @@ const piecesTxt=p=>p.map(([a,b])=>hm(a)+"–"+hm(b)).join(", ");
 /* ---------- relatórios ---------- */
 let period="mes",relTrip=null,relMode="completo",rel=null;
 document.querySelectorAll("#periods button").forEach(b=>b.onclick=()=>{period=b.dataset.p;renderRel()});
-document.querySelectorAll("#relView .seg-ctl button").forEach(b=>b.onclick=()=>{relMode=b.dataset.m;renderRel()});
+document.querySelectorAll("#relView [data-m]").forEach(b=>b.onclick=()=>{relMode=b.dataset.m;renderRel()});
 $("tripPick").addEventListener("change",e=>{relTrip=e.target.value;renderRel()});
 function periodRange(){
   const tk=todayKey(),d=parseKey(tk);
@@ -999,7 +1066,11 @@ function buildRel(){
 }
 function renderRel(){
   document.querySelectorAll("#periods button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===period));
-  document.querySelectorAll("#relView .seg-ctl button").forEach(b=>b.setAttribute("aria-selected",b.dataset.m===relMode));
+  document.querySelectorAll("#relView [data-m]").forEach(b=>b.setAttribute("aria-selected",b.dataset.m===relMode));
+  const bk=relMode==="banco";
+  $("bancoBox").hidden=!bk;["periods","periodLabel","chartCard","tblCard"].forEach(id=>$(id).hidden=bk);
+  document.querySelector("#relView .kpis").hidden=bk;
+  if(bk){$("tripPickRow").hidden=true;$("byTripCard").hidden=false;renderBanco();return}
   const ts=trips();$("tripPickRow").hidden=period!=="viagem";
   if(period==="viagem"){
     if(!relTrip||!all[relTrip])relTrip=ts[0]?.id||null;
@@ -1107,6 +1178,7 @@ function makePdf(){
   return doc;
 }
 $("dlPdf").onclick=async()=>{
+  if(relMode==="banco")return bancoPdf();
   if(!rel||!rel.rows.length)return toast("Nenhum ponto neste período para gerar o PDF.");
   if(!window.jspdf||!window.jspdf.jsPDF.API.autoTable)return toast("O gerador de PDF não carregou. Verifique a conexão e tente de novo.");
   if(!dl)return toast("Download indisponível aqui. Use Copiar texto.");
@@ -1116,6 +1188,7 @@ $("dlPdf").onclick=async()=>{
   }catch(e){toast(e?.code==="declined"?"Download cancelado.":"Não foi possível gerar o PDF. Tente de novo.")}
 };
 $("copyRel").onclick=()=>{
+  if(relMode==="banco")return bancoCopy();
   if(!rel||!rel.rows.length)return toast("Nenhum ponto neste período para copiar.");
   const R=rel,ex=relMode==="extra";
   const lines=ex?[`Horas a mais · ${R.label}`,`Total: ${fmt(R.ot)} em ${R.diasOt} dia(s)`,"",...R.rows.filter(r=>r.ot>0).map(r=>`${r.dataBR}\t${r.viagem}\t${r.fora}\t${fmt(r.ot)}`)]
@@ -1123,6 +1196,91 @@ $("copyRel").onclick=()=>{
       ...R.rows.map(r=>[r.dataBR,r.viagem,r.in1,r.out1,r.in2,r.out2,r.div?fmt(r.div):"",fmt(r.tot),r.ot?fmt(r.ot):""].join("\t"))];
   navigator.clipboard.writeText(lines.join("\n")).then(()=>toast("Copiado. Cole numa mensagem ou planilha."),()=>toast("Não foi possível copiar neste aparelho."));
 };
+
+/* ---------- banco de horas e folgas ---------- */
+const folgaPrefix=()=>"folga_"+me.user+"_";
+function folgas(){const p=folgaPrefix(),a=[];for(const id in all)if(id.startsWith(p))a.push({id,...all[id]});return a.sort((x,y)=>y.data.localeCompare(x.data))}
+const folgaOn=k=>folgas().filter(f=>f.data===k);
+const fmtS=m=>(m<0?"−":"+")+fmt(Math.abs(m));
+function bancoData(){
+  const days=myDays(),tk=todayKey(),items=[];
+  for(const k in days){const x=extraOf(days[k],k,k===tk);if(x.ot>0)items.push({k,tipo:"credito",min:x.ot,titulo:tripFor(k)?.destino||"Hora a mais",sub:piecesTxt(x.pieces)})}
+  folgas().forEach(f=>items.push({k:f.data,tipo:"folga",min:-f.minutos,titulo:f.dia?"Folga (dia inteiro)":"Folga de "+fmt(f.minutos),sub:f.obs||"",id:f.id}));
+  items.sort((a,b)=>a.k.localeCompare(b.k)||(a.tipo==="credito"?-1:1));
+  let run=0;items.forEach(i=>{run+=i.min;i.saldo=run});
+  const cred=items.filter(i=>i.min>0).reduce((s,i)=>s+i.min,0),deb=-items.filter(i=>i.min<0).reduce((s,i)=>s+i.min,0);
+  return{items,cred,deb,saldo:cred-deb};
+}
+let fgTipo="dia";
+function renderBanco(){
+  const B=bancoData(),c=cfg();
+  $("hcTxt").textContent=hcText()+" · jornada de "+fmt(jornada());
+  ["a1","a2","b1","b2"].forEach(f=>{const el=$("hc"+f.toUpperCase());if(document.activeElement!==el)el.value=c[f]});$("hcFds").checked=!!c.fds;
+  $("bkSaldo").textContent=fmtS(B.saldo);$("bkCred").textContent=fmt(B.cred);$("bkDeb").textContent=fmt(B.deb);
+  $("saldoCard").classList.toggle("neg",B.saldo<0);
+  document.querySelectorAll("[data-fg]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.fg===fgTipo));
+  $("fgHorasRow").hidden=fgTipo!=="horas";
+  $("fgDiaInfo").textContent=fgTipo==="dia"?`Desconta uma jornada: ${fmt(jornada())} (pelo seu horário comercial).`:"";
+  if(!$("fgData").value)$("fgData").value=todayKey();
+  const ex=$("extrato");
+  ex.innerHTML=B.items.length?"":'<div class="muted" style="padding:12px 0">Nenhum lançamento ainda. As horas a mais entram aqui sozinhas quando você bate o ponto fora do horário comercial.</div>';
+  [...B.items].reverse().forEach(i=>{
+    const row=document.createElement("div");row.className="ex";
+    row.innerHTML=`<span class="dt"><b>${parseKey(i.k).getDate()}</b>${fdate(i.k,{month:"short",year:"2-digit"})}</span>
+      <span class="ds"><b></b><small></small></span>
+      <span class="vl ${i.min>0?"cr":"db"}">${fmtS(i.min)}<small>saldo ${fmtS(i.saldo)}</small></span>`;
+    row.querySelector(".ds b").textContent=i.titulo;row.querySelector(".ds small").textContent=i.sub;
+    if(i.tipo==="folga"){const d=document.createElement("button");d.className="link danger del";d.textContent="Excluir folga";let arm=false;
+      d.onclick=async()=>{if(!arm){arm=true;d.textContent="Toque de novo para excluir";setTimeout(()=>{arm=false;d.textContent="Excluir folga"},3000);return}
+        await put(i.id,null);toast("Folga excluída");renderBanco()};row.appendChild(d)}
+    ex.appendChild(row);
+  });
+  // horas a mais por viagem, desde o começo
+  $("byTripTitle").textContent="Horas a mais por viagem (total)";
+  const g={};B.items.filter(i=>i.tipo==="credito").forEach(i=>{const t=tripFor(i.k),n=t?t.destino:"Sem viagem";g[n]=(g[n]||0)+i.min});
+  const ent=Object.entries(g).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...ent.map(e=>e[1]));
+  $("byTrip").innerHTML=ent.length?ent.map(([n,v])=>`<div class="bt"><span class="n">${esc(n)}</span><span class="v">${fmt(v)}</span><span class="bar"><i class="o" style="width:${v/mx*100}%"></i></span></div>`).join(""):'<span class="muted">Nenhuma hora a mais ainda.</span>';
+}
+$("fgOpen").onclick=()=>{const f=$("fgForm");f.hidden=!f.hidden;$("fgOpen").setAttribute("aria-expanded",!f.hidden);$("fgOpen").textContent=f.hidden?"Nova folga":"Fechar";if(!f.hidden)$("fgData").value=todayKey()};
+document.querySelectorAll("[data-fg]").forEach(b=>b.onclick=()=>{fgTipo=b.dataset.fg;renderBanco()});
+$("fgForm").addEventListener("submit",async e=>{
+  e.preventDefault();const err=t=>$("fgErr").textContent=t,data=$("fgData").value;
+  if(!data)return err("Escolha o dia da folga.");
+  const minutos=fgTipo==="dia"?jornada():mins($("fgHoras").value)||0;
+  if(minutos<=0)return err("Informe quantas horas de folga.");
+  await put(folgaPrefix()+Date.now().toString(36),{data,minutos,dia:fgTipo==="dia",obs:$("fgObs").value.trim(),criadoEm:new Date().toISOString()});
+  err("");$("fgObs").value="";$("fgForm").hidden=true;$("fgOpen").textContent="Nova folga";$("fgOpen").setAttribute("aria-expanded","false");
+  toast(`Folga registrada: ${fmt(minutos)} descontadas do banco`);renderBanco();
+});
+function bancoPdf(){
+  const B=bancoData();
+  if(!B.items.length)return toast("Nenhum lançamento no banco de horas ainda.");
+  if(!window.jspdf||!window.jspdf.jsPDF.API.autoTable)return toast("O gerador de PDF não carregou. Verifique a conexão e tente de novo.");
+  if(!dl)return toast("Download indisponível aqui. Use Copiar texto.");
+  const{jsPDF}=window.jspdf,doc=new jsPDF({unit:"pt",format:"a4"}),W=doc.internal.pageSize.getWidth(),M=40,purple=[138,63,214],red=[196,58,58],ink=[23,32,54],grey=[107,117,145];
+  doc.setFont("helvetica","bold");doc.setFontSize(18);doc.setTextColor(...ink);doc.text("Banco de horas",M,52);
+  doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(...grey);
+  doc.text(pdfSafe(`${me.name} · todos os lançamentos até ${fdate(todayKey(),{day:"2-digit",month:"2-digit",year:"numeric"})}`),M,70);
+  doc.text(pdfSafe(`Horário comercial: ${hcText()} (jornada de ${fmt(jornada())})`),M,84);
+  const bw=(W-2*M-20)/3,box=(x,l,v,c)=>{doc.setDrawColor(221,226,238);doc.roundedRect(x,100,bw,52,6,6);doc.setFontSize(9);doc.setTextColor(...grey);doc.text(l,x+10,116);
+    doc.setFont("helvetica","bold");doc.setFontSize(16);doc.setTextColor(...c);doc.text(pdfSafe(v),x+10,140);doc.setFont("helvetica","normal")};
+  box(M,"Saldo",fmtS(B.saldo).replace("−","-"),B.saldo<0?red:purple);box(M+bw+10,"Horas a mais acumuladas",fmt(B.cred),ink);box(M+2*(bw+10),"Folgas tiradas",fmt(B.deb),ink);
+  doc.autoTable({startY:172,theme:"striped",margin:{left:M,right:M},styles:{fontSize:8.5,cellPadding:4,textColor:ink},headStyles:{fillColor:purple,textColor:255},
+    footStyles:{fillColor:[233,237,246],textColor:ink,fontStyle:"bold"},
+    head:[["Data","Lançamento","Detalhe","Crédito","Débito","Saldo"]],
+    body:B.items.map(i=>[i.k.split("-").reverse().join("/"),i.titulo,i.sub,i.min>0?fmt(i.min):"",i.min<0?fmt(-i.min):"",fmtS(i.saldo).replace("−","-")].map(pdfSafe)),
+    foot:[["Total","","",fmt(B.cred),fmt(B.deb),fmtS(B.saldo).replace("−","-")]],
+    columnStyles:{3:{halign:"right",textColor:purple},4:{halign:"right",textColor:red},5:{halign:"right",fontStyle:"bold"}}});
+  const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(...grey);const H=doc.internal.pageSize.getHeight();
+    doc.text("Ponto de Viagem",M,H-20);doc.text(`Página ${i} de ${n}`,W-M,H-20,{align:"right"})}
+  dl.save({filename:`banco-de-horas-${todayKey()}.pdf`,data:doc.output("blob")}).catch(e=>toast(e?.code==="declined"?"Download cancelado.":"Não foi possível gerar o PDF. Tente de novo."));
+}
+function bancoCopy(){
+  const B=bancoData();if(!B.items.length)return toast("Nenhum lançamento no banco de horas ainda.");
+  const lines=[`Banco de horas · saldo ${fmtS(B.saldo)}`,`Horas a mais: ${fmt(B.cred)} · Folgas: ${fmt(B.deb)}`,"",...B.items.map(i=>`${i.k.split("-").reverse().join("/")}\t${i.titulo}\t${fmtS(i.min)}\tsaldo ${fmtS(i.saldo)}`)];
+  navigator.clipboard.writeText(lines.join("\n")).then(()=>toast("Copiado."),()=>toast("Não foi possível copiar neste aparelho."));
+}
+$("bankCard").onclick=()=>{relMode="banco";go("rel")};
 
 /* ---------- utilidades ---------- */
 let tt;function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>el.classList.remove("show"),2200)}
