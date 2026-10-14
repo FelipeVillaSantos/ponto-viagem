@@ -1,6 +1,6 @@
 // Ponto de Viagem — modo offline.
 // Troque VERSAO a cada atualização publicada para o celular baixar os arquivos novos.
-const VERSAO = "pv-2026-10-14-3";
+const VERSAO = "pv-2026-10-14-4";
 const ARQUIVOS = [
   "./",
   "./index.html",
@@ -44,7 +44,7 @@ self.addEventListener("fetch", (e) => {
   // Página: tenta a internet (para pegar atualizações) e cai no cache se estiver offline
   if (req.mode === "navigate") {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: "no-store" })
         .then((res) => { const cp = res.clone(); caches.open(VERSAO).then((c) => c.put("./index.html", cp)); return res; })
         .catch(() => caches.match("./index.html"))
     );

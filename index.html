@@ -1308,7 +1308,12 @@ dl={save:async({filename,data})=>{
 }};
 loadLocal();setMode("in");$("sync").textContent="Salvo neste celular";onReady();
 try{navigator.storage?.persist?.()}catch(e){}
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+if("serviceWorker" in navigator){
+  const hadSW=!!navigator.serviceWorker.controller;
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{}));
+  // quando uma versão nova do app assumir, recarrega uma vez para mostrar as novidades
+  let reloaded=false;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadSW&&!reloaded&&!["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)){reloaded=true;location.reload()}});
+}
 // botão "Instalar app" quando o Chrome oferecer
 let installEvt=null;window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;document.querySelectorAll(".install-btn").forEach(b=>b.hidden=false)});
 document.querySelectorAll(".install-btn").forEach(b=>b.onclick=async()=>{if(!installEvt)return;installEvt.prompt();await installEvt.userChoice;installEvt=null;document.querySelectorAll(".install-btn").forEach(x=>x.hidden=true)});
