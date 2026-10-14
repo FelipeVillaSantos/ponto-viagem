@@ -562,12 +562,19 @@ tr:last-child td{border-bottom:0}
   <section class="card" id="lembCard" hidden>
     <h3>Lembretes de ponto</h3>
     <span class="muted" style="font-size:13px">Notificações de segunda a sexta, nos horários do seu expediente. Só avisa se você ainda não registrou aquela batida.</span>
+    <div id="lbApk" class="form" hidden>
+      <span style="font-size:14px">Os lembretes só funcionam no <b>app Android (APK)</b>. Este app aberto pelo navegador não consegue agendar notificações.</span>
+      <a class="btn small" href="https://github.com/FelipeVillaSantos/ponto-viagem/releases/latest" target="_blank" rel="noopener" style="align-self:flex-start;text-decoration:none">Baixar o app Android</a>
+      <span class="muted" style="font-size:13px">Antes de trocar, exporte seus dados aqui embaixo e importe no app Android.</span>
+    </div>
+    <div id="lbCtl" class="form">
     <label class="hc-check"><input type="checkbox" id="lbOn"> Receber lembretes</label>
     <div class="f"><label for="lbAntes">Avisar a entrada e a volta do almoço</label>
       <select class="field" id="lbAntes"><option value="0">No horário</option><option value="5">5 minutos antes</option><option value="10">10 minutos antes</option><option value="15">15 minutos antes</option></select></div>
     <label class="hc-check"><input type="checkbox" id="lbRep"> Avisar de novo 15 minutos depois, se eu não registrar</label>
     <span class="muted" style="font-size:13px" id="lbInfo"></span>
     <button class="btn small ghost" id="lbTest" type="button" style="align-self:flex-start">Enviar notificação de teste</button>
+    </div>
   </section>
 
   <section class="card">
@@ -802,7 +809,8 @@ function nativeSync(){
   },300);
 }
 function renderLemb(){
-  if(!RNW())return;$("lembCard").hidden=false;
+  const nat=!!RNW();$("lembCard").hidden=false;$("lbApk").hidden=nat;$("lbCtl").hidden=!nat;
+  if(!nat||!me)return;
   const L=lemb();$("lbOn").checked=L.on;$("lbAntes").value=String(L.antes);$("lbRep").checked=L.repetir;
   $("lbAntes").disabled=$("lbRep").disabled=!L.on;
   const c=cfg(),menos=(t,m)=>{const v=mins(t)-m;return pad(Math.floor(v/60))+":"+pad(v%60)};
