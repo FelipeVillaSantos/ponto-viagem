@@ -559,6 +559,17 @@ tr:last-child td{border-bottom:0}
     </form>
   </section>
 
+  <section class="card" id="lembCard" hidden>
+    <h3>Lembretes de ponto</h3>
+    <span class="muted" style="font-size:13px">Notificações de segunda a sexta, nos horários do seu expediente. Só avisa se você ainda não registrou aquela batida.</span>
+    <label class="hc-check"><input type="checkbox" id="lbOn"> Receber lembretes</label>
+    <div class="f"><label for="lbAntes">Avisar a entrada e a volta do almoço</label>
+      <select class="field" id="lbAntes"><option value="0">No horário</option><option value="5">5 minutos antes</option><option value="10">10 minutos antes</option><option value="15">15 minutos antes</option></select></div>
+    <label class="hc-check"><input type="checkbox" id="lbRep"> Avisar de novo 15 minutos depois, se eu não registrar</label>
+    <span class="muted" style="font-size:13px" id="lbInfo"></span>
+    <button class="btn small ghost" id="lbTest" type="button" style="align-self:flex-start">Enviar notificação de teste</button>
+  </section>
+
   <section class="card">
     <h3>Seus dados</h3>
     <span class="muted" style="font-size:13px">Seus dados ficam só neste celular. Exporte de vez em quando e guarde o arquivo, para não perder nada se trocar de aparelho.</span>
@@ -620,6 +631,7 @@ async function put(id,val){
   if(col){try{val?await col.doc(id).set(val):await col.doc(id).delete();$("sync").textContent="Sincronizado na nuvem"}
           catch(e){$("sync").textContent="Não foi possível salvar. Verifique a conexão e tente de novo."}}
   else{saveLocal();$("sync").textContent="Salvo neste aparelho"}
+  if(typeof nativeSync==="function")nativeSync();
 }
 
 /* ---------- sessão / login ---------- */
@@ -664,8 +676,9 @@ function enter(user){
   me={user,name:acc.name};setSess(user);sel=todayKey();
   $("whoName").textContent=acc.name;applyTheme(acc.tema||"system");
   $("loginView").hidden=true;$("tabbar").hidden=false;go("home");
+  nativeSync();if(RNW()&&lemb().on)RNW().postMessage(JSON.stringify({type:"permissao"}));
 }
-function showLogin(){me=null;setSess(null);document.querySelectorAll(".view").forEach(v=>v.hidden=true);$("tabbar").hidden=true;$("loginView").hidden=false;lgBtnLabel()}
+function showLogin(){me=null;setSess(null);document.querySelectorAll(".view").forEach(v=>v.hidden=true);$("tabbar").hidden=true;$("loginView").hidden=false;lgBtnLabel();if(typeof nativeSync==="function")nativeSync()}
 $("logout").onclick=showLogin;
 
 /* ---------- dados do usuário ---------- */
@@ -716,7 +729,7 @@ function applyTheme(t){
 }
 try{applyTheme(localStorage.getItem("pv-tema")||"system")}catch(e){}
 function renderPerfil(){
-  const a=acc();
+  const a=acc();renderLemb();
   $("pfName").textContent=a.name||me.user;$("pfUser").textContent="@"+me.user;$("pfMail").textContent=a.email||"Sem e-mail cadastrado";
   $("pfPhotoDel").hidden=!a.foto;
   if(document.activeElement!==$("pfNameIn"))$("pfNameIn").value=a.name||"";
@@ -775,6 +788,40 @@ $("pwForm").addEventListener("submit",async e=>{
   await saveAcc({hash:await hash(me.user,n)});["pwOld","pwNew","pwNew2"].forEach(i=>$(i).value="");err("");toast("Senha alterada");
 });
 $("pfLogout").onclick=()=>showLogin();
+/* ---------- app Android: lembretes e botão voltar ---------- */
+const RNW=()=>window.ReactNativeWebView;
+const lemb=()=>({on:true,antes:5,repetir:true,...(me&&acc().lembretes||{})});
+let nsT;
+function nativeSync(){
+  clearTimeout(nsT);nsT=setTimeout(()=>{
+    const RN=RNW();if(!RN)return;
+    if(!me){RN.postMessage(JSON.stringify({type:"state",lembretes:{on:false}}));return}
+    const c=cfg(),dias={};
+    for(let i=0;i<8;i++){const k=addDays(todayKey(),i),r=recOf(k);dias[k]={in1:!!r.in1,out1:!!r.out1,in2:!!r.in2,out2:!!r.out2,folga:folgaOn(k).some(f=>f.dia)}}
+    RN.postMessage(JSON.stringify({type:"state",nome:me.name,lembretes:lemb(),horario:{a1:c.a1,a2:c.a2,b1:c.b1,b2:c.b2},dias}));
+  },300);
+}
+function renderLemb(){
+  if(!RNW())return;$("lembCard").hidden=false;
+  const L=lemb();$("lbOn").checked=L.on;$("lbAntes").value=String(L.antes);$("lbRep").checked=L.repetir;
+  $("lbAntes").disabled=$("lbRep").disabled=!L.on;
+  const c=cfg(),menos=(t,m)=>{const v=mins(t)-m;return pad(Math.floor(v/60))+":"+pad(v%60)};
+  $("lbInfo").textContent=L.on?`Horários: ${menos(c.a1,L.antes)}, ${c.a2}, ${menos(c.b1,L.antes)} e ${c.b2}.`:"Lembretes desligados.";
+}
+const saveLemb=p=>{saveAcc({lembretes:{...lemb(),...p}});renderLemb();nativeSync()};
+$("lbOn").addEventListener("change",e=>{saveLemb({on:e.target.checked});if(e.target.checked)RNW()?.postMessage(JSON.stringify({type:"permissao"}))});
+$("lbAntes").addEventListener("change",e=>saveLemb({antes:+e.target.value}));
+$("lbRep").addEventListener("change",e=>saveLemb({repetir:e.target.checked}));
+$("lbTest").onclick=()=>{RNW()?.postMessage(JSON.stringify({type:"teste"}));toast("Notificação de teste enviada")};
+window.__nativePerm=ok=>{if(!ok){saveAcc({lembretes:{...lemb(),on:false}});renderLemb();toast("Permita as notificações do Ponto de Viagem nas configurações do Android.")}};
+window.__goPonto=()=>{if(me){sel=todayKey();go("ponto")}};
+window.__nativeBack=()=>{
+  const v=document.querySelector(".view:not([hidden])"),b=v&&v.querySelector("[data-back]");
+  if(b){b.click();return}
+  if(me&&cur!=="home"){go("home");return}
+  RNW()?.postMessage(JSON.stringify({type:"sair"}));
+};
+
 /* backup */
 $("expBtn").onclick=async()=>{
   const{hash:_h,...conta}=acc(),dias=myDays(),viagens={};
@@ -1297,8 +1344,13 @@ setInterval(()=>{if(me&&!["INPUT","SELECT","TEXTAREA"].includes(document.activeE
 /* ---------- inicialização (dados só neste celular) ---------- */
 function onReady(){if(ready)return;ready=true;lgBtnLabel();const s=getSess();if(s&&all["conta_"+s])enter(s)}
 // salvar arquivo: baixa direto; no celular, se der, abre o menu de compartilhar
+const RNB=window.ReactNativeWebView;
 dl={save:async({filename,data})=>{
   const blob=data instanceof Blob?data:new Blob([data]);
+  if(RNB){ // app Android: o lado nativo salva e abre o compartilhar
+    const b64=await new Promise((ok,err)=>{const fr=new FileReader();fr.onload=()=>ok(String(fr.result).split(",")[1]);fr.onerror=err;fr.readAsDataURL(blob)});
+    RNB.postMessage(JSON.stringify({type:"arquivo",nome:filename,mime:blob.type||"application/octet-stream",b64}));return{status:"saved"};
+  }
   const file=new File([blob],filename,{type:blob.type||"application/octet-stream"});
   if(/Android|iPhone|iPad/i.test(navigator.userAgent)&&navigator.canShare?.({files:[file]})){
     try{await navigator.share({files:[file],title:filename});return{status:"saved"}}catch(e){if(e.name==="AbortError")throw{code:"declined"}}
@@ -1308,7 +1360,8 @@ dl={save:async({filename,data})=>{
 }};
 loadLocal();setMode("in");$("sync").textContent="Salvo neste celular";onReady();
 try{navigator.storage?.persist?.()}catch(e){}
-if("serviceWorker" in navigator){
+if(RNB){try{Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:t=>{RNB.postMessage(JSON.stringify({type:"copiar",texto:String(t)}));return Promise.resolve()}}})}catch(e){}}
+if("serviceWorker" in navigator&&!RNB){
   const hadSW=!!navigator.serviceWorker.controller;
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{}));
   // quando uma versão nova do app assumir, recarrega uma vez para mostrar as novidades
