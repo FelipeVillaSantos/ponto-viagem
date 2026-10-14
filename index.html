@@ -436,7 +436,7 @@ tr:last-child td{border-bottom:0}
     </section>
   </div>
   <div class="pills" id="periods" role="group" aria-label="Período">
-    <button data-p="mes">Este mês</button><button data-p="mesant">Mês anterior</button><button data-p="semana">Esta semana</button><button data-p="viagem">Por viagem</button>
+    <button data-p="mes">Este mês</button><button data-p="total">Total</button><button data-p="mesant">Mês anterior</button><button data-p="semana">Esta semana</button><button data-p="viagem">Por viagem</button>
   </div>
   <div class="f" id="tripPickRow" hidden><label for="tripPick">Viagem</label><select class="field" id="tripPick"></select></div>
   <p class="muted" id="periodLabel" style="margin:-6px 0 0;font-size:14px"></p>
@@ -1041,6 +1041,8 @@ function periodRange(){
   if(period==="semana"){const mon=keyOf(new Date(d.getFullYear(),d.getMonth(),d.getDate()-(d.getDay()+6)%7));return[mon,addDays(mon,6),"Semana de "+fdate(mon)+" a "+fdate(addDays(mon,6))]}
   if(period==="mes"){const a=keyOf(new Date(d.getFullYear(),d.getMonth(),1)),b=keyOf(new Date(d.getFullYear(),d.getMonth()+1,0));return[a,b,fdate(a,{month:"long",year:"numeric"})]}
   if(period==="mesant"){const a=keyOf(new Date(d.getFullYear(),d.getMonth()-1,1)),b=keyOf(new Date(d.getFullYear(),d.getMonth(),0));return[a,b,fdate(a,{month:"long",year:"numeric"})]}
+  if(period==="total"){const ks=Object.keys(myDays()).sort(),a=ks[0]||tk,b=ks.length&&ks[ks.length-1]>tk?ks[ks.length-1]:tk;
+    return[a,b,"Todas as horas · desde "+fdate(a,{day:"numeric",month:"short",year:"numeric"})]}
   const t=all[relTrip];if(!t)return[null,null,"Cadastre uma viagem para ver este relatório."];
   const fim=t.fim||(tk>t.inicio?tk:t.inicio);return[t.inicio,fim,t.destino+" · "+rangeTxt(t)];
 }
@@ -1087,18 +1089,24 @@ function renderRel(){
        $("k3").textContent=R.dias;$("k3l").textContent="dias"}
   document.querySelectorAll("#relView .kpi").forEach((k,i)=>k.classList.toggle("ot",ex?i===0:i===1));
   // gráfico
-  $("chartTitle").textContent=ex?"Horas a mais por dia":"Horas por dia";
   $("chartLegend").innerHTML=ex?`<span><i style="background:var(--ot)"></i>Hora a mais</span>`
     :`<span><i style="background:var(--primary)"></i>Horário comercial</span><span><i style="background:var(--ot)"></i>Hora a mais</span>`;
-  const ch=$("chart");ch.innerHTML="";const ds=[],map={};R.rows.forEach(r=>map[r.k]=r);
-  if(R.a){let k=R.a;const end=R.b<tk?R.b:(R.a>tk?R.b:tk);while(k<=end&&ds.length<62){ds.push(k);k=addDays(k,1)}}
-  const J=jornada(),max=ex?Math.max(120,...ds.map(k=>map[k]?.ot||0)):Math.max(J,...ds.map(k=>map[k]?.tot||0));
-  ds.forEach(k=>{const r=map[k]||{com:0,ot:0,tot:0},bar=document.createElement("div");bar.className="bar";
-    bar.title=fdate(k,{weekday:"short",day:"numeric",month:"short"})+": "+(ex?fmt(r.ot)+" a mais":fmt(r.tot)+" ("+fmt(r.ot)+" a mais)");
+  // gráfico: por dia; no filtro Total (ou períodos longos), soma por mês
+  const ch=$("chart");ch.innerHTML="";const map={};R.rows.forEach(r=>map[r.k]=r);
+  const span=R.a?Math.round((parseKey(R.b)-parseKey(R.a))/864e5)+1:0,byMonth=period==="total"||span>62,bks=[];
+  if(R.a&&!byMonth){let k=R.a;const end=R.b<tk?R.b:(R.a>tk?R.b:tk);while(k<=end){const r=map[k]||{com:0,ot:0,tot:0};bks.push({lab:fdate(k),tip:fdate(k,{weekday:"short",day:"numeric",month:"short"}),...r});k=addDays(k,1)}}
+  if(R.a&&byMonth){const g={};R.rows.forEach(r=>{const m=r.k.slice(0,7),b=g[m]||(g[m]={com:0,ot:0,tot:0});b.com+=r.com;b.ot+=r.ot;b.tot+=r.tot});
+    let m=R.a.slice(0,7);const last=(R.b<tk?R.b:tk).slice(0,7);
+    while(m<=last&&bks.length<60){const b=g[m]||{com:0,ot:0,tot:0},lab=fdate(m+"-01",{month:"short",year:"2-digit"});bks.push({lab,tip:fdate(m+"-01",{month:"long",year:"numeric"}),...b});
+      const[y,mm]=m.split("-").map(Number);m=keyOf(new Date(y,mm,1)).slice(0,7)}}
+  $("chartTitle").textContent=(ex?"Horas a mais por ":"Horas por ")+(byMonth?"mês":"dia");
+  const J=jornada(),max=ex?Math.max(120,...bks.map(b=>b.ot)):Math.max(byMonth?1:J,...bks.map(b=>b.tot));
+  bks.forEach(r=>{const bar=document.createElement("div");bar.className="bar";
+    bar.title=r.tip+": "+(ex?fmt(r.ot)+" a mais":fmt(r.tot)+" ("+fmt(r.ot)+" a mais)");
     bar.innerHTML=ex?`<i class="o" style="height:${r.ot/max*100}%"></i>`:`<i class="c" style="height:${r.com/max*100}%"></i><i class="o" style="height:${r.ot/max*100}%"></i>`;
     ch.appendChild(bar)});
-  if(!ex&&J){const ref=document.createElement("div");ref.className="ref";ref.style.bottom=(J/max*100)+"%";ref.innerHTML=`<span>jornada ${fmt(J)}</span>`;ch.appendChild(ref)}
-  $("xlab").innerHTML=ds.length?`<span>${fdate(ds[0])}</span><span>${fdate(ds[ds.length-1])}</span>`:"";
+  if(!ex&&J&&!byMonth){const ref=document.createElement("div");ref.className="ref";ref.style.bottom=(J/max*100)+"%";ref.innerHTML=`<span>jornada ${fmt(J)}</span>`;ch.appendChild(ref)}
+  $("xlab").innerHTML=bks.length?`<span>${bks[0].lab}</span><span>${bks[bks.length-1].lab}</span>`:"";
   // por viagem
   $("byTripCard").hidden=period==="viagem";$("byTripTitle").textContent=ex?"Horas a mais por viagem":"Por viagem";
   if(period!=="viagem"){
