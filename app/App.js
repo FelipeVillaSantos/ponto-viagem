@@ -62,6 +62,7 @@ async function reagendar(estado) {
     if (semana === 0 || semana === 6) continue;
     const reg = estado.dias?.[chaveDia(dia)] || {};
     if (reg.folga) continue;
+    if (L.soViagem && !reg.viagem) continue; // opção "Só nos dias de viagem"
     for (const b of BATIDAS) {
       if (reg[b.chave]) continue;
       const [h, m] = String(estado.horario[b.hora] || "").split(":").map(Number);

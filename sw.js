@@ -1,6 +1,6 @@
 // Ponto de Viagem — modo offline.
 // Troque VERSAO a cada atualização publicada para o celular baixar os arquivos novos.
-const VERSAO = "pv-2026-10-14-5";
+const VERSAO = "pv-2026-10-29-1";
 const ARQUIVOS = [
   "./",
   "./index.html",

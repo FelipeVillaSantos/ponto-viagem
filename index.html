@@ -572,6 +572,7 @@ tr:last-child td{border-bottom:0}
     <div class="f"><label for="lbAntes">Avisar a entrada e a volta do almoço</label>
       <select class="field" id="lbAntes"><option value="0">No horário</option><option value="5">5 minutos antes</option><option value="10">10 minutos antes</option><option value="15">15 minutos antes</option></select></div>
     <label class="hc-check"><input type="checkbox" id="lbRep"> Avisar de novo 15 minutos depois, se eu não registrar</label>
+    <label class="hc-check"><input type="checkbox" id="lbViagem"> Só nos dias de viagem (entre a ida e a volta de uma viagem cadastrada)</label>
     <span class="muted" style="font-size:13px" id="lbInfo"></span>
     <button class="btn small ghost" id="lbTest" type="button" style="align-self:flex-start">Enviar notificação de teste</button>
     </div>
@@ -797,29 +798,36 @@ $("pwForm").addEventListener("submit",async e=>{
 $("pfLogout").onclick=()=>showLogin();
 /* ---------- app Android: lembretes e botão voltar ---------- */
 const RNW=()=>window.ReactNativeWebView;
-const lemb=()=>({on:true,antes:5,repetir:true,...(me&&acc().lembretes||{})});
+const lemb=()=>({on:true,antes:5,repetir:true,soViagem:false,...(me&&acc().lembretes||{})});
 let nsT;
 function nativeSync(){
   clearTimeout(nsT);nsT=setTimeout(()=>{
     const RN=RNW();if(!RN)return;
     if(!me){RN.postMessage(JSON.stringify({type:"state",lembretes:{on:false}}));return}
     const c=cfg(),dias={};
-    for(let i=0;i<8;i++){const k=addDays(todayKey(),i),r=recOf(k);dias[k]={in1:!!r.in1,out1:!!r.out1,in2:!!r.in2,out2:!!r.out2,folga:folgaOn(k).some(f=>f.dia)}}
+    for(let i=0;i<8;i++){const k=addDays(todayKey(),i),r=recOf(k);dias[k]={in1:!!r.in1,out1:!!r.out1,in2:!!r.in2,out2:!!r.out2,folga:folgaOn(k).some(f=>f.dia),viagem:!!tripFor(k)}}
     RN.postMessage(JSON.stringify({type:"state",nome:me.name,lembretes:lemb(),horario:{a1:c.a1,a2:c.a2,b1:c.b1,b2:c.b2},dias}));
   },300);
 }
 function renderLemb(){
   const nat=!!RNW();$("lembCard").hidden=false;$("lbApk").hidden=nat;$("lbCtl").hidden=!nat;
   if(!nat||!me)return;
-  const L=lemb();$("lbOn").checked=L.on;$("lbAntes").value=String(L.antes);$("lbRep").checked=L.repetir;
-  $("lbAntes").disabled=$("lbRep").disabled=!L.on;
+  const L=lemb();$("lbOn").checked=L.on;$("lbAntes").value=String(L.antes);$("lbRep").checked=L.repetir;$("lbViagem").checked=!!L.soViagem;
+  $("lbAntes").disabled=$("lbRep").disabled=$("lbViagem").disabled=!L.on;
   const c=cfg(),menos=(t,m)=>{const v=mins(t)-m;return pad(Math.floor(v/60))+":"+pad(v%60)};
-  $("lbInfo").textContent=L.on?`Horários: ${menos(c.a1,L.antes)}, ${c.a2}, ${menos(c.b1,L.antes)} e ${c.b2}.`:"Lembretes desligados.";
+  let info=L.on?`Horários: ${menos(c.a1,L.antes)}, ${c.a2}, ${menos(c.b1,L.antes)} e ${c.b2}.`:"Lembretes desligados.";
+  if(L.on&&L.soViagem){
+    const tk=todayKey(),hoje=tripFor(tk);let prox=null;
+    if(!hoje)for(let i=1;i<60&&!prox;i++){const t=tripFor(addDays(tk,i));if(t)prox={t,k:addDays(tk,i)}}
+    info+=hoje?` Viagem ativa: ${hoje.destino}.`:prox?` Sem viagem hoje. Próxima: ${prox.t.destino}, a partir de ${fdate(prox.k)}.`:" Nenhuma viagem cadastrada nos próximos dias, então nenhum lembrete será enviado.";
+  }
+  $("lbInfo").textContent=info;
 }
 const saveLemb=p=>{saveAcc({lembretes:{...lemb(),...p}});renderLemb();nativeSync()};
 $("lbOn").addEventListener("change",e=>{saveLemb({on:e.target.checked});if(e.target.checked)RNW()?.postMessage(JSON.stringify({type:"permissao"}))});
 $("lbAntes").addEventListener("change",e=>saveLemb({antes:+e.target.value}));
 $("lbRep").addEventListener("change",e=>saveLemb({repetir:e.target.checked}));
+$("lbViagem").addEventListener("change",e=>saveLemb({soViagem:e.target.checked}));
 $("lbTest").onclick=()=>{RNW()?.postMessage(JSON.stringify({type:"teste"}));toast("Notificação de teste enviada")};
 window.__nativePerm=ok=>{if(!ok){saveAcc({lembretes:{...lemb(),on:false}});renderLemb();toast("Permita as notificações do Ponto de Viagem nas configurações do Android.")}};
 window.__goPonto=()=>{if(me){sel=todayKey();go("ponto")}};
